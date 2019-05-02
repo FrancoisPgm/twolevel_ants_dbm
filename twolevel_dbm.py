@@ -121,25 +121,33 @@ def firstlevel(inputs, args):
     imagelist = list()
     for i, subject in enumerate(inputs, start=0):
         if not is_non_zero_file("output/subject{}/COMPLETE".format(i)):
-            # Base command
-            command = "antsMultivariateTemplateConstruction2.sh -d 3 "
-            # Setup directory and naming
-            command += "-o output/subject{}/subject{}_ ".format(i, i)
-            # Defaults to bootstrap modelbuilds with rigid prealignmnet,
-            # no rigid update
-            command += "-r 1 -l 1 -y 0 "
-            # Model build setup
-            command += "-c {} -a {} -e {} -g {} -i {} -n {} -m {} -t {} ".format(
-                args.cluster_type, args.average_type, args.float,
-                args.gradient_step, args.model_iterations, int(args.N4),
-                args.metric, args.transform)
-            # Registrations Setup
-            command += "-q {} -f {} -s {} ".format(
-                args.reg_iterations, args.reg_shrinks, args.reg_smoothing)
-            if args.rigid_model_target:
-                command += "-z {} ".format(args.rigid_model_target)
-            command += " ".join(subject)
-            command += " && echo DONE > output/subject{}/COMPLETE".format(i)
+            if len(subject) == 1:
+                command = f"cp {subject[0]} output/subject{i}/subject{i}_template0.nii.gz "
+                command += f"&& ImageMath 3 output/subject{i}/subject{i}_{subject[0].rsplit('.nii')[0]}00GenericAffine.mat MakeAffineTransform 1 "
+                command += f"&& CreateImage 3 {subject[0]} output/subject{i}/subject{i}_{subject[0].rsplit('.nii')[0]}11Warp.nii.gz 1 "
+                command += "&& CreateDisplacementField 3 1 " + (f"output/subject{i}/subject{i}_{subject[0].rsplit('.nii')[0]}11Warp.nii.gz " * 3) + f"output/subject{i}/subject{i}_{subject[0].rsplit('.nii')[0]}11InverseWarp.nii.gz "
+                command += "&& CreateDisplacementField 3 1 " + (f"output/subject{i}/subject{i}_{subject[0].rsplit('.nii')[0]}11Warp.nii.gz " * 4)
+                command += f"&& echo DONE > output/subject{i}/COMPLETE"
+            else:
+                # Base command
+                command = "antsMultivariateTemplateConstruction2.sh -d 3 "
+                # Setup directory and naming
+                command += "-o output/subject{}/subject{}_ ".format(i, i)
+                # Defaults to bootstrap modelbuilds with rigid prealignmnet,
+                # no rigid update
+                command += "-r 1 -l 1 -y 0 "
+                # Model build setup
+                command += "-c {} -a {} -e {} -g {} -i {} -n {} -m {} -t {} ".format(
+                    args.cluster_type, args.average_type, args.float,
+                    args.gradient_step, args.model_iterations, int(args.N4),
+                    args.metric, args.transform)
+                # Registrations Setup
+                command += "-q {} -f {} -s {} ".format(
+                    args.reg_iterations, args.reg_shrinks, args.reg_smoothing)
+                if args.rigid_model_target:
+                    command += "-z {} ".format(args.rigid_model_target)
+                command += " ".join(subject)
+                command += f" && echo DONE > output/subject{i}/COMPLETE"
             commands.append(command)
 
         imagelist.append(
